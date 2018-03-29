@@ -1,0 +1,107 @@
+---
+title: "“CS 422 Section 01”"
+author: "Ruhui Shen"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(caret)
+library(rpart.plot)
+library(gplots)
+library(ROCR)
+library(VIM)
+library(lattice)
+library(ggplot2)
+library(psych)
+library(rpart)
+#(a)
+setwd("/Users/ruhuishen/Desktop/422/hw1")
+college<- read.csv("College.csv")
+#(b)
+rownames(college)<-college[,1]
+fix(college)
+college <- college [ , -1]
+#(c)
+#(i)
+summary(college)
+#(ii)
+pairs(college[, 1:10])
+#(iii)
+boxplot(perc.alumni ~ Private, data = college, xlab = "Private college", ylab = "Percent alumni", main = "Alumni domain percentage")
+# Alumni who went to private schools donate more.
+#(iv)
+boxplot(PhD ~ Private, data = college, xlab = "Private school", ylab = "phD number", main = "Ph.D.'s number in college")
+#Public college.
+#(v)
+Elite <- rep("No",nrow(college))
+Elite[college$Top10perc>50]<-"Yes"
+Elite <- as.factor(Elite)
+college <- data.frame(college, Elite)
+summary(Elite)
+#78
+#(vi)
+par(mfrow=c(2,2))
+hist(x=college[,2],col = blues9,xlab="Applicants",ylab="Frequency",main = "Applicants histogram")
+hist(x=college[,13],col = "cadetblue1",xlab="Phd students",ylab="Frequency",main="Phd Histogram")
+hist(x=college[,11],col = "chocolate1",xlab="Books collection",ylab="Frequency",main="Books Histogram")
+hist(x=college[,15],col = "antiquewhite1",xlab="S.F.ratio",ylab="Frequency",main="Student.Faculty Ratio Histogram")
+
+#（vii）
+tuition<-college[,9]
+gradrat<-college[,18]
+
+cor(tuition,gradrat)
+plot(x=tuition,y=gradrat,main="Tuition vs Graduation Ratio",xlab = "tuition",ylab="Grad Ratio")
+
+cat("Comment:The correlation between tuition and graduation ratio is 0.57, so they are moderately correlated. This is also make sense, since the more students paid for the school, the more time they will spend on academic. Nobody would risk wasting money and time for college. ")
+
+#2.2
+#（a）simple regression
+setwd("/Users/ruhuishen/Desktop/422/hw1")
+df<- read.csv("nba.csv")
+cor(df[ ,8:23])
+model.pts <- lm(PTS ~ MIN, data = df)
+summary(model.pts)
+#(b)
+pairs(df[8:23])
+plot(df[,"MIN"],df[,"PTS"], xlab = "Minutes palyed", ylab = "Points scored", main = "MIN and PTS model")
+abline(model.pts$coefficients[1],model.pts$coefficients[2], col = "red")
+set.seed(1122)
+index <- sample(1:nrow(df),250)
+train <- df[index, ]
+test <- df[-index, ]
+summary(test)
+#(c)
+cor(train[ ,8:23])
+pairs.panels(train[8:23])
+lm(PTS~MIN+FG+FGA,data=df)
+pairs.panels(train[8:10])
+ #(d)
+model<-lm(PTS~MIN+FG+FGA,data=df)
+summary(model)
+model1<-lm(PTS~MIN+FG,data=df)
+summary(model1)
+#(e)
+plot(model1,1, main = "Residual of the model")
+#(f)
+hist(model1$residuals, xlab = "Model Residuals", 
+     main=" Residual Histogram")
+cat("Comment:The model perform good due to the red line position is almost around 0.")
+#The histogram almost follow Gaussian distribution
+#(g)
+prediction <- predict(model1, test)
+compare <- cbind("predictions" = prediction, "true" = test$PTS)
+sum(apply(compare, 1, function(x) round(x[1] == x[2])))
+#(h)
+residuals <- test$PTS - prediction
+print(RSS <- sum(residuals^2))
+print(TSS <- sum((test$PTS - mean(test$PTS))^2))
+p <- 4
+n <- length(test$PTS)
+print(F <- ((TSS - RSS)/p) / (RSS / (n - p -1)))
+print(RSE <- sqrt(RSS / (n - p -1)))
+
+```
+

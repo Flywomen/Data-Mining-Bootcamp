@@ -1,0 +1,41 @@
+---
+title: “CS 422 Section 01”
+output: html_notebook
+author: Ruhui Shen
+---
+
+#1-A 
+```{r}
+#load
+data(cars)
+#print
+print(cars)
+```
+#1-B
+```{r}
+#Plot and name
+plot(cars,main="The Cars Dataset")
+```
+#1-C
+```{r}
+summary(cars)
+```
+
+#1-D
+#According to the summary, the maximum speed is 25.0 and the minimum distance is 2.00
+
+#2-A
+```{r}
+#read
+setwd("/Users/ruhuishen/Desktop/422/hw0")
+student_info<- read.csv("student.csv", sep=";", header=T)
+# Or read.csv("/Users/ruhuishen/Desktop/422/hw0/student.csv", ...)
+#add
+student_new<-data.frame("Brad Pitt", "40051", "2.21", "C")
+names(student_new)<-c("name","id","gpa","grade")
+student_info<-rbind(student_info,student_new)
+print(student_info)
+```
+
+
+

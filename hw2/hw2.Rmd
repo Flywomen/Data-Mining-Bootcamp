@@ -1,0 +1,204 @@
+---
+title: "“CS 422 Section 01”"
+author: "Ruhui Shen"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(lattice)
+library(ggplot2)
+library(caret)
+library(gplots)
+library(ROCR)
+library(Matrix)
+library(arules)
+library(randomForest)
+library("knitr")
+
+setwd("/Users/ruhuishen/Desktop/422/hw2")
+set.seed(1122)
+#
+train<- read.csv("adult-train(1).csv")  
+#after trying, we know there are three column have the "?"
+sum(train$occupation == "?")
+sum(train$workclass == "?")
+sum(train$native_country == "?")
+which(train$occupation == "?")
+which(train$workclass == "?")
+which(train$native_country == "?")
+train <- train[which(train$occupation != "?"), ]
+train <- train[which(train$workclass != "?"), ]
+train <- train[which(train$native_country != "?"), ]
+#train<-scale(train)
+test<- read.csv("adult-test(1).csv")  
+sum(test$occupation == "?")
+sum(test$workclass == "?")
+sum(test$native_country == "?")
+which(test$occupation == "?")
+which(test$workclass == "?")
+which(test$native_country == "?")
+test <- test[which(test$occupation != "?"), ]
+test <- test[which(test$workclass != "?"), ]
+test <- test[which(test$native_country != "?"), ]
+#(b)
+model<-rpart(income~., method="class", data=train)
+rpart.plot(model, extra=104, fallen.leaves = T, type=4,main="rpart on original data")
+summary(model)
+#(i)According to the variable importance of the model, the top three prodictors are: relationship,marital_status,capital_gain. 
+#(ii) first split in done on predictor "relationship, "income" is the predicted class of the first node, the distribution is 75% and 25%. 
+#(c)
+pred <- predict(model, test, type = "class")
+#head(pred)
+##(i)
+confusionMatrix(pred, test[, 15])
+#the balanced accurancy of model is 0.726
+##(ii)
+#0.274.Balance error rate = 1.0 - balanced accurancy = 1.0 - 0.7259 = (after assuming 3 decimal place accuracy) 0.274.
+#(iii)    
+#Sensitivity is 0.948, Specifity is 0.504
+#(iv)
+#The AUC of ROC Cruve is 0.843
+pred.rocr <- predict(model, newdata=test, type="prob")[,2]
+f.pred <- prediction(pred.rocr, test$income)
+f.perf <- performance(f.pred, "tpr", "fpr")
+plot(f.perf, colorize=T, lwd=3)
+#abline(0,1)
+auc <- performance(f.pred, measure = "auc")
+(paste("The AUC for ROC curve(this model) is ", round(auc@y.values[[1]], 3)))
+#(d)
+options("digits"=5)
+printcp(model)
+complexity=model$cptable[which.min(model$cptable[,"xerror"]), "CP"]
+complexity
+# The tree would not benefit from a pruning. Our original model already has 4 splits, and according to the result of printcp(model), we could get the smallest xerror 0.639 and complexity 0.01 with 4 splits. So the tree doesn't need any pruning. 
+#(e)
+#(i)
+sum(with(train, income == "<=50K"))
+#22653
+sum(with(train, income == ">50K"))
+#7508
+#(ii)
+train_less50 <- train[which(train$income =="<=50K"), ]
+train_less50 <- train_less50[sample(1:nrow(train_less50), 7508, replace=FALSE),]
+train_more50 <- train[which(train$income ==">50K"), ]
+new_train <- rbind(train_less50, train_more50)
+str(new_train)
+#(iii)  #training
+new_model <- rpart(income ~ ., method = "class", data = new_train)
+rpart.plot(new_model, extra=104, fallen.leaves = T, type=4, main="Rpart on new data")
+summary(new_model)
+new_pred <- predict(new_model, test, type = "class")
+#(i)
+confusionMatrix(new_pred, test[, 15])
+#balanced accuracy is 0.803.
+#(ii)
+#0.197.Balance error rate = 1.0 - balanced accurancy = 1.0 - 0.803=0.197.
+#(iii)
+#The sensitivy is 0.782 and the specificity is 0.825.
+#(iv)
+#The AUC of ROC Cruve is 0.849
+pred.new_rocr <- predict(new_model, newdata=test, type="prob")[,2]
+f.new_pred <- prediction(pred.new_rocr, test$income)
+f.new_perf <- performance(f.new_pred, "tpr", "fpr")
+plot(f.new_perf, colorize=T, lwd=3)
+#abline(0,1)
+new_auc <- performance(f.new_pred, measure = "auc")
+(paste("The new AUC for ROC curve(this model) is ", round(new_auc@y.values[[1]], 3)))
+#(f)
+# in (c) the the balanced accuracy, sensitivity, specificity and AUC of the models is 0.726, 0.948, 0.504, 0.843.
+# in (e) the the balanced accuracy, sensitivity, specificity and AUC of the models is 0.803, 0.782, 0.825, 0.849.
+# So the new model after balance in (e) perform better.The accuracy and  AUC are increase.But the specificity is also increase, which means the TN are increase. 
+#2.2
+#(a)
+set.seed(1122)
+#rm(model, pred)
+model <- randomForest(income ~ ., data=train, importance=TRUE)
+pred <- predict(model, test, type="class")
+confusionMatrix(pred, as.factor(test$income))
+#(a)
+#(i)
+# The balanced accurancy of the model is 0.632
+#(ii)
+# The accurancy of the model is 0.818
+#(iii)
+# The Sensitivity is 0.997, Specificity is 0.267
+#(iv)
+table(test$income)
+#There are 11360 observations are labeled "<=50K" and 3700 are labeled ">50K"in test model.
+#(v)
+#it seems that they both make sense after calculating TNR and TPR.
+#(vi)
+varImpPlot(model)
+# For MeanDecreaseAccurancy "capital_gain" is the most important variable and the "native_country" is the least important varialbe.
+# For MeanDecreaseGini "relationship" is the most important variable and "race" is the least important varialbe.
+#(vii)
+print(model)
+# Therefore, the number of variable tried at each split is 3
+#(b)
+set.seed(1122)
+mtry <- tuneRF(train[, 1:14], train[ ,15], ntreeTry=500,stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
+#（i）3,because default equals square root of predictors, which is sqrt(14)=3 
+#(ii)
+print(mtry)
+#2 is the optimal value of mtry suggested
+newmodel<-randomForest(income ~ ., importance=TRUE, mtry=2, data=train )
+newpred<-predict(newmodel, test, type="class")
+confusionMatrix(newpred, as.factor(test$income))
+#(1) The balanced accurancy of the model is 0.639
+#(2) The accurancy of the model is 0.821
+#(3) The Sensitivity is 0.997, the Specificity is 0.282.
+#(5)
+varImpPlot(newmodel)
+# For MeanDecreaseAccurancy "capital_gain" is the most important variable and the "native_country" is the least important varialbe.
+# For MeanDecreaseGini "capital_gain" is the most important variable and "race" is the least important varialbe.
+#(iv)
+#in 2.2(a) balanced accurancy: 0.632 accurancy:0.818 Sensitivity:0.997 Specificity: 0.267
+#So the new model perform slightly better with the higher balance accuracy but little worse accuracy. Sensitivity and Specificity are almost the same.
+#2.3
+#rm(list=ls())
+trans <- read.transactions("groceries.csv",format = "basket",sep="," )
+#(i)
+rules <- apriori(trans,parameter =list(support=0.1))
+inspect(rules)
+summary(rules)
+#0 rules with minimum support value of 0.1
+#(ii)
+rules <- apriori(trans,parameter =list(support=0.01))
+inspect(rules)
+summary(rules)
+#0 rules with support value of 0.01
+rules <- apriori(trans,parameter =list(support=0.002))
+inspect(rules)
+summary(rules)
+#11 rules with support value of 0.003
+rules <- apriori(trans,parameter =list(support=0.001))
+inspect(rules)
+summary(rules)
+#410 rules with support value of 0.001.So at 0.001 support value I get at least 400 rules.
+#(iii)
+orderedRules <- sort(rules, by="support", decreasing=F)
+inspect(orderedRules[1:5])
+sort(itemFrequency(trans), decreasing=T)[1:3]
+# the most frequently bought is whole milk other and its frequency is 0.25552.
+#(iv)
+sort(itemFrequency(trans), decreasing=F)[1:3]
+# the most frequently bought is baby food and its frequency is 0.00010168.
+#(v)
+orderedRules <- sort(rules, by="support", decreasing=F)
+inspect(orderedRules[1:5])
+#(vi)
+orderedRules <- sort(rules, by="confidence", decreasing=F)
+inspect(orderedRules[1:5])
+#(vii)
+orderedRules <- sort(rules, by="support", decreasing=T)
+inspect(orderedRules[1:5])
+#(viii)
+orderedRules <- sort(rules, by="confidence", decreasing=T)
+inspect(orderedRules[1:5])
+```
+
+
